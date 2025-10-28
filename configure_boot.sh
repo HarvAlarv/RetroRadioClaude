@@ -13,9 +13,21 @@ YELLOW='\033[1;33m'
 BLUE='\033[0;34m'
 NC='\033[0m' # No Color
 
-# Boot config file location
-BOOT_CONFIG="/boot/config.txt"
-BOOT_CONFIG_BACKUP="/boot/config.txt.backup-$(date +%Y%m%d-%H%M%S)"
+# Boot config file location (check both old and new Pi OS locations)
+BOOT_CONFIG=""
+if [ -f "/boot/firmware/config.txt" ]; then
+    BOOT_CONFIG="/boot/firmware/config.txt"
+    print_info "Found config at /boot/firmware/config.txt (Bookworm)"
+elif [ -f "/boot/config.txt" ]; then
+    BOOT_CONFIG="/boot/config.txt"
+    print_info "Found config at /boot/config.txt (Bullseye or older)"
+else
+    print_error "Could not find boot config file!"
+    print_error "Checked: /boot/firmware/config.txt and /boot/config.txt"
+    exit 1
+fi
+
+BOOT_CONFIG_BACKUP="${BOOT_CONFIG}.backup-$(date +%Y%m%d-%H%M%S)"
 
 # Check if running as root
 if [ "$EUID" -ne 0 ]; then 
