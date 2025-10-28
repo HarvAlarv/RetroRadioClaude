@@ -72,44 +72,50 @@ print_info "Installing Python packages..."
 pip3 install --quiet pillow spidev pygame RPi.GPIO gpiozero
 print_status "Python packages installed"
 
-# Enable SPI
-print_info "Enabling SPI interface..."
-if ! grep -q "^dtparam=spi=on" /boot/config.txt; then
-    echo "dtparam=spi=on" >> /boot/config.txt
-    print_status "SPI enabled"
+# Run boot configuration script
+print_info "Configuring boot settings for I2S and SPI..."
+if [ -f "configure_boot.sh" ]; then
+    chmod +x configure_boot.sh
+    ./configure_boot.sh
+    if [ $? -eq 0 ]; then
+        print_status "Boot configuration completed"
+    else
+        print_error "Boot configuration failed"
+        exit 1
+    fi
 else
-    print_status "SPI already enabled"
-fi
-
-# Configure I2S Audio
-print_info "Configuring I2S audio..."
-
-# Disable built-in audio
-if grep -q "^dtparam=audio=on" /boot/config.txt; then
-    sed -i 's/^dtparam=audio=on/dtparam=audio=off/' /boot/config.txt
-fi
-
-# Add I2S configuration if not present
-if ! grep -q "^dtparam=i2s=on" /boot/config.txt; then
-    cat >> /boot/config.txt << EOF
+    print_error "configure_boot.sh not found!"
+    print_info "Attempting manual configuration..."
+    
+    # Fallback: Manual configuration
+    if ! grep -q "^dtparam=spi=on" /boot/config.txt; then
+        echo "dtparam=spi=on" >> /boot/config.txt
+        print_status "SPI enabled"
+    fi
+    
+    if grep -q "^dtparam=audio=on" /boot/config.txt; then
+        sed -i 's/^dtparam=audio=on/dtparam=audio=off/' /boot/config.txt
+    fi
+    
+    if ! grep -q "^dtparam=i2s=on" /boot/config.txt; then
+        cat >> /boot/config.txt << 'BOOTEOF'
 
 # I2S Audio Configuration for PCM5102
 dtparam=audio=off
 dtparam=i2s=on
 dtoverlay=hifiberry-dac
-EOF
-    print_status "I2S configuration added"
-else
-    print_status "I2S already configured"
+BOOTEOF
+        print_status "I2S configuration added"
+    fi
 fi
 
 # Configure ALSA audio
 print_info "Configuring ALSA..."
 if [ -f "config/asound.conf" ]; then
     cp config/asound.conf /etc/asound.conf
-    print_status "ALSA configured"
+    print_status "ALSA configured from config file"
 else
-    cat > /etc/asound.conf << EOF
+    cat > /etc/asound.conf << 'ALSAEOF'
 pcm.!default {
     type hw
     card 0
@@ -119,7 +125,7 @@ ctl.!default {
     type hw
     card 0
 }
-EOF
+ALSAEOF
     print_status "ALSA configuration created"
 fi
 
@@ -156,7 +162,7 @@ if [[ $REPLY =~ ^[Yy]$ ]]; then
     print_info "Setting up systemd service..."
     
     # Create systemd service file
-    cat > /etc/systemd/system/fm-radio.service << EOF
+    cat > /etc/systemd/system/fm-radio.service << SERVICEEOF
 [Unit]
 Description=FM Radio MP3 Player
 After=network.target sound.target
@@ -173,7 +179,7 @@ StandardError=journal
 
 [Install]
 WantedBy=multi-user.target
-EOF
+SERVICEEOF
 
     # Reload systemd and enable service
     systemctl daemon-reload
@@ -198,7 +204,7 @@ echo "   - Create folders for each playlist/station"
 echo "   - Add MP3 files to each folder"
 echo ""
 echo "2. Reboot your Raspberry Pi:"
-echo "   sudo reboot"
+echo "   ${GREEN}sudo reboot${NC}"
 echo ""
 echo "3. After reboot, check status:"
 echo "   sudo systemctl status fm-radio.service"
