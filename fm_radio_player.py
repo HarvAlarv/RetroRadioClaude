@@ -24,7 +24,7 @@ DISPLAY_DC_PIN = 25
 DISPLAY_RST_PIN = 27
 DISPLAY_CS_PIN = 8
 ROTARY_CLK_PIN = 17
-ROTARY_DT_PIN = 18
+ROTARY_DT_PIN = 23  # Changed from 18 to avoid conflict with I2S BCK on GPIO 18
 ROTARY_SW_PIN = 22
 DISPLAY_TIMEOUT = 30  # Seconds before dimming display when idle
 
