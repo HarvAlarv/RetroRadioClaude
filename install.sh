@@ -62,15 +62,27 @@ apt-get install -y -qq \
     python3-rpi.gpio \
     python3-pygame \
     python3-gpiozero \
+    fonts-dejavu-core \
+    fonts-dejavu-extra \
     git \
     vim
 
 print_status "Packages installed"
 
+# Check Python version
+print_info "Checking Python version..."
+PYTHON_VERSION=$(python3 --version | cut -d' ' -f2 | cut -d'.' -f1,2)
+print_status "Python $PYTHON_VERSION detected"
+
 # Install Python packages via pip
 print_info "Installing Python packages..."
-pip3 install --quiet pillow spidev pygame RPi.GPIO gpiozero
-print_status "Python packages installed"
+# Try with --break-system-packages for newer Pi OS, fallback to regular pip3
+if pip3 install --break-system-packages --quiet pillow spidev pygame RPi.GPIO gpiozero 2>/dev/null; then
+    print_status "Python packages installed (with --break-system-packages)"
+else
+    pip3 install --quiet pillow spidev pygame RPi.GPIO gpiozero
+    print_status "Python packages installed"
+fi
 
 # Run boot configuration script
 print_info "Configuring boot settings for I2S and SPI..."
